@@ -54,13 +54,8 @@ ci.shell = (function() {
     $container.html(configMap.main_html);
     setJqueryMap();
 
-    // set anchor_schema | allow or disallow some URI's
-    /*$.uriAnchor.configModule({
-     schema_map: configMap.anchor_schema_map
-     });*/
-
     // bind to events
-    $(window).bind('hashchange', onHashChange)
+    $(window).bind('hashchange', onHashChange).trigger('hashchange');
   };
   return {initModule: initModule};
 }());
