@@ -7,14 +7,11 @@
     getUriMapChanges = function(lastUrimap) {
       var res = {}, currentUri = getCurrentUriMap();
       for(var urikey in currentUri) {
-        if(!(urikey in lastUrimap && lastUrimap[urikey] === currentUri[urikey])) res[urikey] = currentUri[urikey];
+        if(!(urikey in lastUrimap) || lastUrimap[urikey] != currentUri[urikey]) res[urikey] = currentUri[urikey];
       }
       for(var urikey in lastUrimap) {
-        if(!(urikey in currentUri && currentUri[urikey] === lastUrimap[urikey])) res[urikey] = lastUrimap[urikey];
-      }
-      for(var key in res) {
-        if(res[key] === "true") res[key] = true;
-        if(res[key] === "false") res[key] = false;
+        if(!(urikey in currentUri)) res[urikey] = false;
+        else if(lastUrimap[urikey] != currentUri[urikey]) res[urikey] = currentUri[urikey];
       }
       return res;
     };
