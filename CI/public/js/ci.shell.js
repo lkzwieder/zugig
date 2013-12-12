@@ -1,5 +1,6 @@
 ci.shell = (function() {
   'use strict';
+
   // declarations
   var configMap = {
       /*anchor_schema_map: {
@@ -33,16 +34,18 @@ ci.shell = (function() {
 
   // handlers
   onHashChange = function() {
-    var isok = true, map_previous = storeAnchorMap(), changes = $.uriParser.getUriMapChanges(map_previous);
+    var isok = true, map_previous = storeAnchorMap(), changes = $.uriHandler.getUriMapChanges(map_previous);
     try {
       for(var change in changes) {
+        //if(changes[change].toString().search('{') === 0) changes[change] = JSON.parse(changes[change]);
         ci[change].handler(changes[change]);
       }
     } catch(error) {
-      $.uriParser.setUri(map_previous);
+      console.log(error);
+      $.uriHandler.setUri(map_previous);
       isok = false;
     }
-    stateMap.anchor_map = isok ? $.uriParser.getCurrentUriMap() : map_previous;
+    stateMap.anchor_map = isok ? $.uriHandler.getCurrentUriMap() : map_previous;
     return false;
   };
 
