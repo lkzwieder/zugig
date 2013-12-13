@@ -1,4 +1,4 @@
-ci.test = (function() {
+sc.test = (function() {
   'use strict';
 
   // declarations
@@ -22,7 +22,7 @@ ci.test = (function() {
   // handlers
   handler = function(arg) {
     initModule($("#shell-header"));
-    console.log(arg);
+    console.log(typeof arg);
     return false;
   };
 

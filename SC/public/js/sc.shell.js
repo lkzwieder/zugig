@@ -1,4 +1,4 @@
-ci.shell = (function() {
+sc.shell = (function() {
   'use strict';
 
   // declarations
@@ -37,8 +37,13 @@ ci.shell = (function() {
     var isok = true, map_previous = storeAnchorMap(), changes = $.uriHandler.getUriMapChanges(map_previous);
     try {
       for(var change in changes) {
-        //if(changes[change].toString().search('{') === 0) changes[change] = JSON.parse(changes[change]);
-        ci[change].handler(changes[change]);
+
+        /*console.log(changes[change]);
+        if(changes[change].toString().search('{') > -1) {
+          console.log("entra");
+          changes[change] = $.parseJSON("'{" +changes[change] +"}'");
+        }*/
+        sc[change].handler(changes[change]);
       }
     } catch(error) {
       console.log(error);

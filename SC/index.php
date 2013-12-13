@@ -5,6 +5,8 @@ function path() {return implode(DIRECTORY_SEPARATOR, $parts = func_get_args());}
 $config_path = DIRECTORY_SEPARATOR.path('home', 'sp3ctr4l', 'zugig').DIRECTORY_SEPARATOR;
 $main_settings = parse_ini_file($config_path.'zugig.ini');
 define("ENVIROMENT", $main_settings['enviroment']);
+define("DEFAULT_CONTROLLER", $main_settings['default_controller']);
+define("DEFAULT_ACTION", $main_settings['default_action']);
 require_once $main_settings['loader'];
 
 # xhprof init
@@ -18,8 +20,8 @@ try {
     }
 
     # routes settings - entry points
-    $router = Router::get_instance();
-    $router->set_route('/', ['controller' => 'spa', 'action' => 'index']);
+    $router =   Router::get_instance();
+    $router->set_route('/'); # , ['controller' => 'home', 'action' => 'index']
     $router->run();
 
     # xhprof collect and save info
