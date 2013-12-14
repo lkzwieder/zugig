@@ -1,8 +1,5 @@
 <?php
 class Router {
-    const DEFAULT_CONTROLLER = "home";
-    const DEFAULT_ACTION = "index";
-
     private $request_uri;
     private $routes;
     private static $instance = false;
