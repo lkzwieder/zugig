@@ -20,8 +20,9 @@ try {
     }
 
     # routes settings - entry points
-    $router =   Router::get_instance();
+    $router = Router::get_instance();
     $router->set_route('/'); # , ['controller' => 'home', 'action' => 'index']
+    $router->set_route('/news/:id/:another/:caca', ['controller' => 'home', 'action' => 'home'], ['id' => '[\d]{1,8}', 'another' => '[a-z]{3}']);
     $router->run();
 
     # xhprof collect and save info
