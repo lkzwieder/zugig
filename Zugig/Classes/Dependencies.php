@@ -6,7 +6,7 @@ class Dependencies {
     private $data = [];
 
     public function get_data() {
-        if($this->queue) throw new Exception("The queue has data");
+        if($this->queue) foreach($this->executed as $name) $this->was_dependence($name);
         return $this->data;
     }
 
