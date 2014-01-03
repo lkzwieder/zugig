@@ -1,5 +1,6 @@
-ci.shell = (function() {
+sc.shell = (function() {
   'use strict';
+
   // declarations
   var configMap = {
       /*anchor_schema_map: {
@@ -33,16 +34,23 @@ ci.shell = (function() {
 
   // handlers
   onHashChange = function() {
-    var isok = true, map_previous = storeAnchorMap(), changes = $.uriParser.getUriMapChanges(map_previous);
+    var isok = true, map_previous = storeAnchorMap(), changes = $.uriHandler.getUriMapChanges(map_previous);
     try {
       for(var change in changes) {
-        ci[change].handler(changes[change]);
+
+        /*console.log(changes[change]);
+        if(changes[change].toString().search('{') > -1) {
+          console.log("entra");
+          changes[change] = $.parseJSON("'{" +changes[change] +"}'");
+        }*/
+        sc[change].handler(changes[change]);
       }
     } catch(error) {
-      $.uriParser.setUri(map_previous);
+      console.log(error);
+      $.uriHandler.setUri(map_previous);
       isok = false;
     }
-    stateMap.anchor_map = isok ? $.uriParser.getCurrentUriMap() : map_previous;
+    stateMap.anchor_map = isok ? $.uriHandler.getCurrentUriMap() : map_previous;
     return false;
   };
 
@@ -54,13 +62,8 @@ ci.shell = (function() {
     $container.html(configMap.main_html);
     setJqueryMap();
 
-    // set anchor_schema | allow or disallow some URI's
-    /*$.uriAnchor.configModule({
-     schema_map: configMap.anchor_schema_map
-     });*/
-
     // bind to events
-    $(window).bind('hashchange', onHashChange)
+    $(window).bind('hashchange', onHashChange).trigger('hashchange');
   };
   return {initModule: initModule};
 }());

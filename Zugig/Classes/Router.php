@@ -1,8 +1,5 @@
 <?php
 class Router {
-    const DEFAULT_CONTROLLER = "main";
-    const DEFAULT_ACTION = "index";
-
     private $request_uri;
     private $routes;
     private static $instance = false;
@@ -34,16 +31,16 @@ class Router {
         $params = [];
         foreach($this->routes as $v) {
             if(preg_match('@^'.$v['regex'].'$@', $this->request_uri, $values)) {
-                if($v['target']['controller']) $controller = $v['target']['controller'];
-                if($v['target']['action']) $action =  $v['target']['action'];
-                for($i = 0; $i < count($values) -1; $i++) {
+                if(isset($v['target']['controller'])) $controller = $v['target']['controller'];
+                if(isset($v['target']['action'])) $action =  $v['target']['action'];
+                for($i = count($values) -1; $i--;) {
                     $params[substr($v['keys'][$i], 1)] = $values[$i +1];
                 }
                 break;
             }
         }
-        $controller = "Controllers_".ucfirst(isset($controller) ? $controller : self::DEFAULT_CONTROLLER);
-        $action = isset($action) ? $action : self::DEFAULT_ACTION;
+        $controller = "Controllers_".ucfirst(isset($controller) ? $controller : DEFAULT_CONTROLLER);
+        $action = isset($action) ? $action : DEFAULT_ACTION;
         $redirect = new $controller();
         $redirect->{$action}(array_merge($params, $_GET, $_POST, $_COOKIE));
     }
