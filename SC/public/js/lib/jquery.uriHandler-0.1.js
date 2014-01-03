@@ -2,7 +2,7 @@
   // plugin
   $.uriHandler = (function() {
     'use strict';
-    var setUri, makeUriString, getUri, getCurrentUriMap, getUriMapChanges;
+    var setUri, makeUriString, getUri, getCurrentUriMap, getUriMapChanges, setUriMap;
 
     getUriMapChanges = function(lastUrimap) {
       var res = {}, currentUri = getCurrentUriMap();
@@ -57,10 +57,17 @@
       return res;
     };
 
+    setUriMap = function(urimap) {
+      for(var key in urimap) {
+        
+      }
+    };
+
     return {
       getUriMapChanges: getUriMapChanges,
       getCurrentUriMap: getCurrentUriMap,
-      setUri: setUri
+      setUri: setUri,
+      setUriMap: setUriMap
     };
   })();
 })(jQuery, document);
@@ -68,3 +75,20 @@
 //TODO check if uri is divided by #! or by #
 //TODO include HTML5 API for history and so on
 //TODO validate URIs
+
+(function($, d){
+  'use strict';
+  $.router = (function() {
+    var get_uri;
+    get_uri = function() {
+      var res, hash = d.location.href.split('#!', 2)[1];
+      res = hash === undefined ? "" : hash;
+      return res;
+    };
+
+    return {
+      set_route: set_route,
+      run: run
+    };
+  })();
+})(jQuery, document);

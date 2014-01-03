@@ -22,7 +22,7 @@ sc.test = (function() {
   // handlers
   handler = function(arg) {
     initModule($("#shell-header"));
-    console.log(typeof arg);
+    jqueryMap.$test.html(arg);
     return false;
   };
 
