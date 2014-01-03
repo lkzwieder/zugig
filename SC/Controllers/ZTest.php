@@ -43,4 +43,16 @@ class Controllers_ZTest extends TestController {
     public function dummy_test() {
         echo file_get_contents(APP_ROOT."/public/js/lib/jquery.uriHandler-0.1.js");
     }
+
+    public function test_gluejs() {
+        $g = GlueJS::get_instance();
+        $g->set_url_data("/public/js/sc.js", "sc", ["handler"]);
+        $g->begin_tag_data();?>
+        <script>(function(){sc.initModule($('#primero'));})();</script>
+        <?php $g->end_tag_data("primero", ["sc"]);
+        $g->set_url_data("/public/js/lib/jquery-2.0.3.min.js", "jquery");
+        $g->set_url_data("/public/js/lib/jquery.uriHandler-0.1.js", "handler", ["jquery"]);
+        $g->set_url_data("/public/js/sc.shell.js", "shell", ["sc"]);
+        $this->pre_var_dump($g->minify());
+    }
 }

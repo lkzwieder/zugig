@@ -1,7 +1,6 @@
 <?php
-class GlueJS implements Glue {
-    private static $instance = null;
-    private $dependencies;
+class GlueJS extends Glue {
+    protected static $instance = null;
 
     public static function get_instance() {
         if(!self::$instance) {
@@ -10,16 +9,9 @@ class GlueJS implements Glue {
         return self::$instance;
     }
 
-    public function set_chunk() {}
-    public function get_data() {}
-    public function print_data() {}
-    public function print_route() {}
+    protected function __construct() {}
 
-    private function __construct() {
-        $this->dependencies = new Dependencies();
+    public function minify() {
+        return Minifier::minify($this->get_packed_data());
     }
-
-    private function pack() {}
-    private function minify() {}
-    private function version_file() {}
 }

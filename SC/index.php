@@ -29,6 +29,7 @@ try {
     $router->set_route('/test/gluejs', ['controller' => 'ZTest', 'action' => 'test_glue_js']);
     $router->set_route('/test/gluepack', ['controller' => 'ZTest', 'action' => 'test_glue_pack']);
     $router->set_route('/test/glueurls', ['controller' => 'ZTest', 'action' => 'test_glue_urls']);
+    $router->set_route('/test/gluejs', ['controller' => 'ZTest', 'action' => 'test_gluejs']);
     $router->set_route('/test/dummy', ['controller' => 'ZTest', 'action' => 'dummy_test']);
     $router->run();
 

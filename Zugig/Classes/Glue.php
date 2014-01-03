@@ -25,8 +25,6 @@ class Glue extends Dependencies {
             } else {
                 $data = strpos($data, "http") === false ? APP_ROOT.$data : $data;
                 $d = file_get_contents($data);
-                echo "<pre>";var_dump($d);
-                die("fin");
             }
             $res .= trim($d);
         }
