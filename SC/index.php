@@ -4,11 +4,6 @@ define('APP_ROOT', __DIR__);
 function path() {return implode(DIRECTORY_SEPARATOR, $parts = func_get_args());}
 $config_path = DIRECTORY_SEPARATOR.path('home', 'sp3ctr4l', 'zugig').DIRECTORY_SEPARATOR;
 $main_settings = parse_ini_file($config_path.'zugig.ini', true);
-define("CSS_PACKER", $main_settings['css']['packer']);
-define("JS_PACKER", $main_settings['js']['packer']);
-define("ENVIROMENT", $main_settings['base']['enviroment']);
-define("DEFAULT_CONTROLLER", $main_settings['base']['default_controller']);
-define("DEFAULT_ACTION", $main_settings['base']['default_action']);
 require_once $main_settings['base']['loader'];
 
 # xhprof init
@@ -21,10 +16,11 @@ try {
         xhprof_enable(XHPROF_FLAGS_NO_BUILTINS | XHPROF_FLAGS_CPU | XHPROF_FLAGS_MEMORY);
     }
 
+    #The routes can be in a DB (cached) in order to made an ABM for flexibility sake
     # routes settings - entry points
     $router = Router::get_instance();
     $router->set_route('/'); # , ['controller' => 'home', 'action' => 'index']
-    $router->set_route('/news/:id/:another/:caca', ['controller' => 'home', 'action' => 'home'], ['id' => '[\d]{1,8}', 'another' => '[a-z]{3}']);
+    $router->set_route('/news/:id/:another/:caca', ['controller' => 'home', 'action' => 'index'], ['id' => '[\d]{1,8}', 'another' => '[a-z]{3}']);
     $router->set_route('/test/dependencies', ['controller' => 'ZTest', 'action' => 'test_dependencies']);
     $router->set_route('/test/gluejs', ['controller' => 'ZTest', 'action' => 'test_glue_js']);
     $router->set_route('/test/gluepack', ['controller' => 'ZTest', 'action' => 'test_glue_pack']);
