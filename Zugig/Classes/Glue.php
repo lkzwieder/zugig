@@ -1,9 +1,5 @@
 <?php
 class Glue extends Dependencies {
-    public function get_packed_data() {
-        return $this->pack($this->get_data());
-    }
-
     public function begin_tag_data() {
         ob_start();
     }
@@ -16,13 +12,14 @@ class Glue extends Dependencies {
         $this->add_data(['file', $url], $name, $need);
     }
 
-    public function pack($content) {
+    public function get_packed_data() {
         $res = "";
-        foreach($content as $v) {
+        foreach($this->get_data() as $v) {
             list($type, $data) = $v;
             if($type == "code") {
                 $d = strip_tags($data);
             } else {
+                # TODO this 'else' can be better, lack of time... sorry
                 $data = strpos($data, "http") === false ? APP_ROOT.$data : $data;
                 $d = file_get_contents($data);
             }

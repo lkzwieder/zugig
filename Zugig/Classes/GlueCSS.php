@@ -9,9 +9,21 @@ class GlueCSS extends Glue {
         return self::$instance;
     }
 
+    public function print_tag() {?>
+        <style type="text/css"><?=$this->flush()?></style>
+    <?php }
+
+    public function print_url_tag() {
+        #TODO complete print_url_tag
+    }
+
     protected function __construct() {}
 
-    public function minify() {
-        return MinifierCSS::minify($this->get_packed_data());
+    protected function minify() {
+        return CSSMinifier::minify($this->get_packed_data());
+    }
+
+    protected function flush() {
+        return CSS_MINIFIER ? $this->minify() : $this->get_packed_data();
     }
 }

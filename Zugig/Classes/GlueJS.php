@@ -9,9 +9,21 @@ class GlueJS extends Glue {
         return self::$instance;
     }
 
+    public function print_tag() {?>
+        <script type="text/javascript"><?=$this->flush()?></script>
+    <?php }
+
+    public function print_url_tag() {
+        #TODO complete print_url_tag
+    }
+
     protected function __construct() {}
 
-    public function minify() {
+    protected function minify() {
         return Minifier::minify($this->get_packed_data());
+    }
+
+    protected function flush() {
+        return JS_MINIFIER ? $this->minify() : $this->get_packed_data();
     }
 }
