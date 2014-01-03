@@ -1,23 +1,35 @@
 <?php
-abstract class Glue {
-    protected  $dependencies;
-    protected static $instance = null;
-
-    protected function __construct() {
-        $this->dependencies = new Dependencies();
+class Glue extends Dependencies {
+    public function get_packed_data() {
+        return $this->pack($this->get_data());
     }
 
-    public function get_clean_data() {
-        $res = $this->get_data();
-        self::$instance = null;
+    public function begin_tag_data() {
+        ob_start();
+    }
+
+    public function end_tag_data($name = false, Array $need = []) {
+        $this->add_data(['code', ob_get_clean()], $name, $need);
+    }
+
+    public function set_url_data($url, $name = false, Array $need = []) {
+        $this->add_data(['file', $url], $name, $need);
+    }
+
+    public function pack($content) {
+        $res = "";
+        foreach($content as $v) {
+            list($type, $data) = $v;
+            if($type == "code") {
+                $d = strip_tags($data);
+            } else {
+                $data = strpos($data, "http") === false ? APP_ROOT.$data : $data;
+                $d = file_get_contents($data);
+                echo "<pre>";var_dump($d);
+                die("fin");
+            }
+            $res .= trim($d);
+        }
         return $res;
     }
-
-    public abstract function set_raw_data($raw, $name = false, Array $need = []);
-    public abstract function set_tag_data($tag, $name = false, Array $need = []);
-    public abstract function set_url_data($url, $name = false, Array $need = []);
-
-    public abstract function get_data();
-    public abstract function print_data();
-    public abstract function print_route();
 }
