@@ -22,7 +22,7 @@ class Autoload {
     }
 
     private function autoload($className) {
-        $pathFile = str_replace('_', DIRECTORY_SEPARATOR, $className).'.php';
+        $pathFile = str_replace(['_', '\\'], DIRECTORY_SEPARATOR, $className).'.php';
         $toRequire = false;
         foreach($this->directories as $dir) {
             if($toRequire = realpath($dir.DIRECTORY_SEPARATOR.$pathFile)) break;

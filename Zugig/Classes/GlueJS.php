@@ -20,7 +20,7 @@ class GlueJS extends Glue {
     protected function __construct() {}
 
     protected function minify() {
-        return Minifier::minify($this->get_packed_data());
+        return JShrink\Minifier::minify($this->get_packed_data());
     }
 
     protected function flush() {
