@@ -10,8 +10,10 @@ define("ENVIROMENT", $main_settings['base']['enviroment']);
 define("DEFAULT_CONTROLLER", $main_settings['base']['default_controller']);
 define("DEFAULT_ACTION", $main_settings['base']['default_action']);
 
-# TODO implement native autoload with namespaces capability
 require_once path(ROOT, 'Zugig', 'Classes', 'Autoload.php');
+# $main_settings = Config::get_instance('main', $config_path.'zugig.ini')->get_config();
+# echo "<pre>";var_dump($main_settings);
+# require_once $main_settings->base->loader;
 $autoloader = Autoload::get_instance();
 $autoloader->set_path(path(ROOT, 'Zugig', 'Classes'));
 $autoloader->set_path(path(ROOT, 'Zugig', 'Interfaces'));
