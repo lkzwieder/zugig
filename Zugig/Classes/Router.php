@@ -39,7 +39,7 @@ class Router {
                 break;
             }
         }
-        $controller = "Controllers_".ucfirst(isset($controller) ? $controller : DEFAULT_CONTROLLER);
+        $controller = isset($controller) ? $controller : DEFAULT_CONTROLLER;
         $action = isset($action) ? $action : DEFAULT_ACTION;
         $redirect = new $controller();
         $redirect->{$action}(array_merge($params, $_GET, $_POST, $_COOKIE));

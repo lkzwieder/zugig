@@ -53,6 +53,6 @@ class Controllers_ZTest extends TestController {
         $g->set_url_data("/public/js/lib/jquery-2.0.3.min.js", "jquery");
         $g->set_url_data("/public/js/lib/jquery.uriHandler-0.1.js", "handler", ["jquery"]);
         $g->set_url_data("/public/js/sc.shell.js", "shell", ["sc"]);
-        $this->pre_var_dump($g->minify());
+        $this->pre_var_dump($g->flush());
     }
 }
