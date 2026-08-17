@@ -1,30 +1,52 @@
 <?php
-class Glue extends Dependencies {
-    public function begin_tag_data() {
-        ob_start();
+
+class Glue
+{
+    private array $items = [];
+
+    public function add(mixed $content, string $type = 'code', ?string $name = null, array $deps = []): self
+    {
+        $this->items[] = [
+            'content' => $content,
+            'type' => $type,
+            'name' => $name,
+            'deps' => $deps,
+        ];
+        return $this;
     }
 
-    public function end_tag_data($name = false, Array $need = []) {
-        $this->add_data(['code', ob_get_clean()], $name, $need);
+    public function addCode(mixed $content, ?string $name = null, array $deps = []): self
+    {
+        return $this->add($content, 'code', $name, $deps);
     }
 
-    public function set_url_data($url, $name = false, Array $need = []) {
-        $this->add_data(['file', $url], $name, $need);
+    public function addFile(string $file, ?string $name = null, array $deps = []): self
+    {
+        return $this->add($file, 'file', $name, $deps);
     }
 
-    public function get_packed_data() {
-        $res = "";
-        foreach($this->get_data() as $v) {
-            list($type, $data) = $v;
-            if($type == "code") {
-                $d = strip_tags($data);
-            } else {
-                # TODO this 'else' can be better, lack of time... sorry
-                $data = strpos($data, "http") === false ? APP_ROOT.$data : $data;
-                $d = file_get_contents($data);
+    public function flush(): string
+    {
+        $result = '';
+
+        foreach ($this->items as $item) {
+            if ($item['type'] === 'code') {
+                $result .= strip_tags($item['content']);
+            } elseif ($item['type'] === 'file') {
+                $file = str_starts_with($item['content'], 'http')
+                    ? $item['content']
+                    : APP_ROOT . DIRECTORY_SEPARATOR . $item['content'];
+                $result .= file_get_contents($file);
             }
-            $res .= trim($d);
         }
-        return $res;
+
+        return trim($result);
     }
 }
+
+// Uso:
+// $glue = new Glue();
+// $glue->addFile('css/base.css')
+//      ->addFile('css/layout.css', deps: ['base'])
+//      ->addCode('<style>body{margin:0}</style>')
+//      ->flush();
