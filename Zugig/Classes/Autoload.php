@@ -1,32 +1,39 @@
 <?php
-class Autoload {
-    private $directories = array();
-    private static $instance = false;
 
-    public static function get_instance() {
-        if(!self::$instance) {
-            $class = get_called_class();
-            self::$instance = new $class();
+class Autoload
+{
+    private array $dirs = [];
+
+    public function addPath(string $dir): self
+    {
+        if (is_dir($dir)) {
+            $this->dirs[] = rtrim($dir, DIRECTORY_SEPARATOR);
         }
-        return self::$instance;
+        return $this;
     }
 
-    public function set_path($path) {
-        $this->directories[] = $path;
+    public function register(): self
+    {
+        spl_autoload_register($this, true, true);
+        return $this;
     }
 
-    private function __construct() {
-        $this->set_path(ROOT);
-        $this->set_path(APP_ROOT);
-        spl_autoload_register(array($this, 'autoload'));
-    }
+    public function autoload(string $class): void
+    {
+        $file = str_replace(['_', '\\'], DIRECTORY_SEPARATOR, $class) . '.php';
 
-    private function autoload($className) {
-        $pathFile = str_replace(['_', '\\'], DIRECTORY_SEPARATOR, $className).'.php';
-        $toRequire = false;
-        foreach($this->directories as $dir) {
-            if($toRequire = realpath($dir.DIRECTORY_SEPARATOR.$pathFile)) break;
+        foreach ($this->dirs as $dir) {
+            $fullPath = $dir . DIRECTORY_SEPARATOR . $file;
+            if (file_exists($fullPath)) {
+                require $fullPath;
+                return;
+            }
         }
-        if($toRequire) require $toRequire;
     }
 }
+
+// Uso:
+// $loader = new Autoload();
+// $loader->addPath(ROOT . '/app')
+//        ->addPath(ROOT . '/src')
+//        ->register();
