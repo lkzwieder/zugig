@@ -1,88 +1,138 @@
 <?php
-class Curl {
-    public static function createCurlHandler($url, $params = array(), $method = "GET", $headers = false) {
-        foreach($params as $key => $value) {
-            if(!is_string($value)) {
-                $params[$key] = json_encode($value);
-            }
-        }
 
-        $params = http_build_query($params);
-        if($method == "GET") {
-            $url = $params ? $url.'?'.$params : $url;
-            $ch = curl_init($url);
-        } else {
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
-        }
-        if($headers) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        }
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        // This is a PHP level timeout. It does not matter the status of the connection.
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5 * 60); // 5 minutes so can't hung forever.
-        return $ch;
-    }
+class Curl
+{
+    public static function request(
+        string $url,
+        array $params = [],
+        string $method = 'GET',
+        ?array $headers = null
+    ): array {
+        $ch = self::createHandle($url, $params, $method, $headers);
 
-    public static function makeCurlRequest($ch) {
         try {
             $content = curl_exec($ch);
-            $ans = self::processCurlAnswer($ch, $content);
+            return self::processResponse($ch, $content);
+        } catch (Throwable $e) {
+            return self::errorResponse($e);
+        } finally {
             curl_close($ch);
-            return $ans;
-        } catch (Exception $e) {
-            return false;
         }
     }
 
-    public static function makeCurlRequestsInParallel(array $curlHandlers) {
+    public static function parallel(array $requests): array
+    {
+        $handles = [];
+        $map = [];
+
+        foreach ($requests as $i => $req) {
+            $url = $req['url'] ?? '';
+            $method = $req['method'] ?? 'GET';
+            $params = $req['params'] ?? [];
+            $headers = $req['headers'] ?? null;
+
+            $handles[$i] = self::createHandle($url, $params, $method, $headers);
+            $map[$i] = $handles[$i];
+        }
+
+        $mh = curl_multi_init();
+        $responses = [];
+
         try {
-            $mh = curl_multi_init();
-            if ($mh === false) {
-                throw new Exception("Error creating a cURL multi handle resource.");
+            foreach ($handles as $ch) {
+                curl_multi_add_handle($mh, $ch);
             }
-            foreach ($curlHandlers as $ch) {
-                if (curl_multi_add_handle($mh, $ch) !== 0) {
-                    throw new Exception("Error adding a normal cURL handle to a cURL multi handle.");
-                }
-            }
+
             $running = null;
-            curl_multi_exec($mh, $running);
-            do {// The default is to wait one second.
-                curl_multi_select($mh);
+            do {
                 curl_multi_exec($mh, $running);
-            } while($running > 0);
-            $ans = array();
-            foreach($curlHandlers as $key => $ch) {
-                $ans[$key] = self::processCurlAnswer($ch, curl_multi_getcontent($ch));
+                curl_multi_select($mh);
+            } while ($running > 0);
+
+            foreach ($map as $i => $ch) {
+                $content = curl_multi_getcontent($ch);
+                $responses[$i] = self::processResponse($ch, $content);
                 curl_multi_remove_handle($mh, $ch);
                 curl_close($ch);
             }
+
+            return $responses;
+        } catch (Throwable $e) {
+            return array_fill_keys(array_keys($requests), self::errorResponse($e));
+        } finally {
             curl_multi_close($mh);
-            return $ans;
-        } catch (Exception $e) {
-            error_log($e->getMessage());
-            $ans = array();
-            foreach($curlHandlers as $key => $ch) {
-                $ans[$key] = false;
-            }
-            return $ans;
         }
     }
 
-    private static function processCurlAnswer($ch, $content) {
-        $errorCode = curl_errno($ch);
-        $errorMessage = curl_error($ch);
-        if ($errorCode) {
-            error_log("Curl error " . $errorCode . ": " . $errorMessage);
-            return false;
-        } else {
-            $response = array(
-                'code' => curl_getinfo($ch, CURLINFO_HTTP_CODE),
-                'body' => $content,
-            );
-            return $response;
+    private static function createHandle(
+        string $url,
+        array $params,
+        string $method,
+        ?array $headers
+    ): \CurlHandle {
+        if (!empty($params) && in_array($method, ['GET', 'DELETE'], true)) {
+            $url .= '?' . http_build_query($params);
         }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 300,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+
+        if (in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+        }
+
+        if ($method === 'DELETE') {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+        }
+
+        if ($headers !== null) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        }
+
+        return $ch;
+    }
+
+    private static function processResponse(\CurlHandle $ch, ?string $content): array
+    {
+        $error = curl_errno($ch);
+        if ($error > 0) {
+            return [
+                'code' => 0,
+                'body' => null,
+                'error' => curl_error($ch),
+                'headers' => [],
+            ];
+        }
+
+        return [
+            'code' => curl_getinfo($ch, CURLINFO_HTTP_CODE),
+            'body' => $content,
+            'error' => null,
+            'headers' => [],
+        ];
+    }
+
+    private static function errorResponse(Throwable $e): array
+    {
+        return [
+            'code' => 0,
+            'body' => null,
+            'error' => $e->getMessage(),
+            'headers' => [],
+        ];
     }
 }
+
+// Uso:
+// $result = Curl::request('https://api.example.com/user', ['id' => 1]);
+// $results = Curl::parallel([
+//     ['url' => 'https://api.example.com/users'],
+//     ['url' => 'https://api.example.com/posts'],
+//     ['method' => 'POST', 'url' => 'https://api.example.com/create', 'params' => ['name' => 'test']],
+// ]);
