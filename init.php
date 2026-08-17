@@ -1,21 +1,50 @@
 <?php
-define("ROOT", __DIR__);
-define("DATABASES", $config_path."databases.ini");
-define("SFTP", $config_path."sftp.ini");
 
-# $main_settings must be declared in the index file of the application
-define("CSS_MINIFIER", $main_settings['css']['minify']);
-define("JS_MINIFIER", $main_settings['js']['minify']);
-define("ENVIROMENT", $main_settings['base']['enviroment']);
-define("DEFAULT_CONTROLLER", $main_settings['base']['default_controller']);
-define("DEFAULT_ACTION", $main_settings['base']['default_action']);
+// Zugig Framework - Bootstrap
+// Require minimum PHP 8.0
+if (version_compare(PHP_VERSION, '8.0.0', '<')) {
+    die("Zugig requires PHP 8.0 or higher. Current: " . PHP_VERSION);
+}
 
-require_once path(ROOT, 'Zugig', 'Classes', 'Autoload.php');
-# $main_settings = Config::get_instance('main', $config_path.'zugig.ini')->get_config();
-# echo "<pre>";var_dump($main_settings);
-# require_once $main_settings->base->loader;
-$autoloader = Autoload::get_instance();
-$autoloader->set_path(path(ROOT, 'Zugig', 'Classes'));
-$autoloader->set_path(path(ROOT, 'Zugig', 'Interfaces'));
-$autoloader->set_path(path(ROOT, 'Zugig', 'Traits'));
-$autoloader->set_path(path(ROOT, 'Zugig', 'Lib'));
+// Define ROOT if not already set
+if (!defined('ROOT')) {
+    define('ROOT', __DIR__);
+}
+
+// Load .env file if exists
+$envFile = ROOT . '/.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (str_contains($line, '=') && !str_starts_with($line, '#')) {
+            [$key, $value] = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+        }
+    }
+}
+
+// Default constants
+defined('APP_ROOT') ?: define('APP_ROOT', ROOT);
+defined('DATABASES') ?: define('DATABASES', APP_ROOT . '/config/database.ini');
+defined('SFTP') ?: define('SFTP', APP_ROOT . '/config/sftp.ini');
+
+// Default minifier settings
+if (!defined('CSS_MINIFIER')) {
+    define('CSS_MINIFIER', $_ENV['CSS_MINIFIER'] ?? true);
+}
+if (!defined('JS_MINIFIER')) {
+    define('JS_MINIFIER', $_ENV['JS_MINIFIER'] ?? true);
+}
+if (!defined('ENVIROMENT')) {
+    define('ENVIROMENT', $_ENV['APP_ENV'] ?? 'production');
+}
+
+// Register autoloader
+$loader = new Autoload();
+$loader->addPath(APP_ROOT . '/app')
+       ->addPath(APP_ROOT . '/src')
+       ->addPath(APP_ROOT . '/Zugig/Classes')
+       ->addPath(APP_ROOT . '/Zugig/Interfaces')
+       ->addPath(APP_ROOT . '/Zugig/Traits')
+       ->addPath(APP_ROOT . '/Zugig/Lib')
+       ->register();
