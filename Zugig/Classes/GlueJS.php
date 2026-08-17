@@ -1,29 +1,35 @@
 <?php
-class GlueJS extends Glue {
-    protected static $instance = null;
 
-    public static function get_instance() {
-        if(!self::$instance) {
-            self::$instance = new self();
-        }
-        return self::$instance;
+class GlueJS extends Glue
+{
+    public function tag(array $options = []): string
+    {
+        $minified = $this->minify();
+        $type = $options['type'] ?? 'text/javascript';
+        return "<script type=\"{$type}\">{$minified}</script>";
     }
 
-    public function print_tag() {?>
-        <script type="text/javascript"><?=$this->flush()?></script>
-    <?php }
-
-    public function print_url_tag() {
-        #TODO complete print_url_tag
+    public function tagLink(string $src, array $options = []): string
+    {
+        $attrs = ['src' => $src];
+        if (isset($options['type'])) $attrs['type'] = $options['type'];
+        if (isset($options['defer'])) $attrs['defer'] = 'defer';
+        if (isset($options['async'])) $attrs['async'] = 'async';
+        $parts = array_map(fn($k, $v) => htmlspecialchars($k) . '="' . htmlspecialchars($v) . '"', array_keys($attrs), $attrs);
+        return '<script ' . implode(' ', $parts) . '></script>';
     }
 
-    protected function __construct() {}
-
-    protected function minify() {
-        return JShrink\Minifier::minify($this->get_packed_data());
-    }
-
-    public function flush() {
-        return JS_MINIFIER ? $this->minify() : $this->get_packed_data();
+    protected function minify(): string
+    {
+        return defined('JS_MINIFIER') && JS_MINIFIER
+            ? \JShrink\Minifier::minify($this->flush())
+            : $this->flush();
     }
 }
+
+// Uso:
+// $js = new GlueJS();
+// $js->addFile('js/base.js')
+//    ->addFile('js/utils.js')
+//    ->addFile('js/app.js')
+//    ->tag(); // returns <script>...</script>

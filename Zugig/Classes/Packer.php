@@ -1,69 +1,75 @@
 <?php
-class Packer {
-    private $path;
 
-    public function get_path() {
-        return $this->path;
+class Packer
+{
+    private string $root;
+
+    public function __construct(?string $root = null)
+    {
+        $this->root = $root ?? (defined('ROOT') ? ROOT : __DIR__);
     }
 
-    private function write_file($data, $path) {
-        $fp = fopen(ROOT.$path, "w");
-        fwrite($fp, $data);
-        fclose($fp);
-    }
+    public function pack(array $items, string $type = 'js', bool $minify = true, ?string $cachePath = null): string
+    {
+        $cachePath ??= sys_get_temp_dir() . '/zugig';
+        $content = $this->assemble($items, $type);
+        $hash = sha1($content);
+        $cacheDir = $cachePath . '/packed';
+        $cacheFile = "{$cacheDir}/{$hash}.{$type}";
 
-    private function version_file() {
-
-    }
-}
-
-class Fwk_Packer {
-    private $type;
-    public function __construct($type) {
-        $this->type = $type;
-    }
-
-    public function reduce($data) {
-        $packed = $this->pack($data);
-        $hash = sha1($packed);
-        $cache = Fwk_Cache::getInstance();
-        if(!$path = $cache->getCache($hash)) {
-            $minified = $this->type == "js" ? $this->minifyJs($packed) : $this->minifyCss($packed);
-            $path = $this->getPath($minified);
-            $this->writeFile($minified, $path);
-            $cache->setCache($hash, $path);
+        if (file_exists($cacheFile)) {
+            return $cacheFile;
         }
-        return $path;
+
+        $packed = $minify
+            ? $this->minify($content, $type)
+            : $content;
+
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir, 0755, true);
+        }
+
+        file_put_contents($cacheFile, $packed);
+        return $cacheFile;
     }
 
-    private function pack($content) {
-        $res = "";
-        foreach($content as $v) {
-            list($type, $data) = $v;
-            if($type == "code") {
-                $d = strip_tags($data);
-            } else {
-                if(strpos($data, "http") === false) {
-                    $data = "http://".$_SERVER["HTTP_HOST"].$data;
-                }
-                $d = file_get_contents($data);
+    private function assemble(array $items, string $type): string
+    {
+        $content = '';
+
+        foreach ($items as $item) {
+            $typeKey = $item['type'] ?? 'code';
+            $data = $item['data'] ?? '';
+
+            if ($typeKey === 'code') {
+                $content .= strip_tags($data);
+            } elseif ($typeKey === 'file') {
+                $filePath = str_starts_with($data, 'http')
+                    ? $data
+                    : $this->root . DIRECTORY_SEPARATOR . $data;
+                $content .= file_get_contents($filePath);
             }
-            $res .= $d."\n";
+
+            $content .= "\n";
         }
-        return $res;
+
+        return trim($content);
     }
 
-    private function minifyJs($data) {
-        return Fwk_Minifier::minify($data);
-    }
+    private function minify(string $content, string $type): string
+    {
+        if ($type === 'css') {
+            return MinifierCSS::minify($content);
+        }
 
-    private function getPath($data) {
-        return TMP_PATH.sha1($data).".".$this->type;
-    }
-
-    private function writeFile($data, $path) {
-        $fp = fopen(ROOT.$path, "w");
-        fwrite($fp, $data);
-        fclose($fp);
+        return \JShrink\Minifier::minify($content);
     }
 }
+
+// Uso:
+// $packer = new Packer(ROOT);
+// $file = $packer->pack([
+//     ['type' => 'file', 'data' => 'js/base.js'],
+//     ['type' => 'code', 'data' => 'console.log("app")'],
+// ], 'js');
+// // returns path to packed file in sys_get_temp_dir()

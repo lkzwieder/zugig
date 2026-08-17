@@ -1,69 +1,141 @@
 <?php
-class Dependencies {
-    private $queue = [];
-    private $executed = [];
-    private $nn = 0;
-    private $data = [];
 
-    public function get_data() {
-        if($this->queue) foreach($this->executed as $name) $this->was_dependence($name);
-        return $this->data;
+class Dependencies
+{
+    private array $queue = [];
+    private array $executed = [];
+    private int $nn = 0;
+    private array $data = [];
+
+    public function add(mixed $content, ?string $name = null, array $deps = []): self
+    {
+        $this->addCode($content, $name, $deps);
+        return $this;
     }
 
-    public function add_data($data, $name = false, Array $need = []) {
-        return $this->add_code($data, $name, $need);
+    public function addData(mixed $content, ?string $name = null, array $deps = []): self
+    {
+        return $this->add($content, $name, $deps);
     }
 
-    private function add_code($data, $name, $need) {
-        if(count($need)) {
-            foreach($need as $value) {
-                $key = array_search($value, $this->executed);
-                if($key !== false) {
-                    unset($need[$key]);
+    public function addFile(string $file, ?string $name = null, array $deps = []): self
+    {
+        $this->add(['file', $file], $name, $deps);
+        return $this;
+    }
+
+    public function addCode(mixed $content, ?string $name = null, array $deps = []): self
+    {
+        $this->add(['code', $content], $name, $deps);
+        return $this;
+    }
+
+    public function get(): string
+    {
+        $this->resolve();
+        return $this->flatten();
+    }
+
+    private function add(mixed $content, ?string $name, array $deps): void
+    {
+        if (!empty($deps)) {
+            $remaining = $this->pendingDeps($deps);
+            if (!empty($remaining)) {
+                $this->enqueue($content, $name ?? '_lkz' . $this->nn++, $remaining);
+                return;
+            }
+        }
+        $this->insert($content, $name);
+    }
+
+    private function pendingDeps(array $deps): array
+    {
+        $pending = [];
+        foreach ($deps as $dep) {
+            if (!in_array($dep, $this->executed, true)) {
+                $pending[] = $dep;
+            }
+        }
+        return $pending;
+    }
+
+    private function enqueue(mixed $content, string $name, array $deps): void
+    {
+        if (!isset($this->queue[$name])) {
+            $this->queue[$name] = ['content' => $content, 'deps' => $deps];
+        }
+    }
+
+    private function insert(mixed $content, ?string $name): void
+    {
+        $this->data[] = $content;
+        if ($name !== null && !str_starts_with($name, '_lkz')) {
+            $this->markExecuted($name);
+        }
+    }
+
+    private function markExecuted(string ...$names): void
+    {
+        foreach ($names as $name) {
+            if (!in_array($name, $this->executed, true)) {
+                $this->executed[] = $name;
+                $this->resolveDep($name);
+            }
+        }
+    }
+
+    private function resolveDep(string $name): void
+    {
+        foreach ($this->queue as $queueName => $item) {
+            if (in_array($name, $item['deps'], true)) {
+                $item['deps'] = array_filter($item['deps'], fn($d) => $d !== $name);
+                if (empty($item['deps'])) {
+                    unset($this->queue[$queueName]);
+                    $this->insert($item['content'], $queueName);
                 }
             }
         }
-        return count($need) ? $this->enqueue($data, $name, $need) : $this->insert($data, $name);
     }
 
-    private function insert($data, $name) {
-        $this->data[] = $data;
-        if($name && false === strpos($name, "_lkz")) {
-            $this->set_executed($name);
-        }
-        return $this->data; #at this point data must have one at least.
-    }
-
-    private function enqueue($data, $name, $need) {
-        if(!$name) {
-            $name = "_lkz".$this->nn++;
-        }
-        $res = false;
-        if(!isset($this->queue[$name])) {
-            $this->queue[$name]['data'] = $data;
-            $this->queue[$name]['need'] = $need;
-            $res = true;
-        }
-        return $res;
-    }
-
-    private function was_dependence($name) {
-        foreach($this->queue as $key => $value) {
-            $num = array_search($name, $value['need']);
-            if($num !== false) {
-                unset($this->queue[$key]['need'][$num]);
-                if(!count($this->queue[$key]['need'])) {
-                    unset($this->queue[$key]);
-                    $this->insert($value['data'], $key);
+    private function resolve(): void
+    {
+        $changed = true;
+        while ($changed && !empty($this->queue)) {
+            $changed = false;
+            foreach ($this->queue as $name => $item) {
+                if (empty($item['deps'])) {
+                    $this->insert($item['content'], $name);
+                    unset($this->queue[$name]);
+                    $changed = true;
+                    break;
                 }
             }
         }
     }
 
-    private function set_executed() {
-        foreach(func_get_args() as $name) {
-            $this->executed[] = $name;
-            $this->was_dependence($name);
+    private function flatten(): string
+    {
+        $result = '';
+        foreach ($this->data as $item) {
+            if (is_array($item) && $item[0] === 'code') {
+                $result .= strip_tags($item[1]);
+            } elseif (is_array($item) && $item[0] === 'file') {
+                $file = str_starts_with($item[1], 'http')
+                    ? $item[1]
+                    : APP_ROOT . DIRECTORY_SEPARATOR . $item[1];
+                $result .= file_get_contents($file);
+            } else {
+                $result .= $item;
+            }
         }
+        return trim($result);
     }
 }
+
+// Uso:
+// $deps = new Dependencies();
+// $deps->addFile('css/base.css', 'base')
+//      ->addFile('css/layout.css', 'layout', ['base'])
+//      ->addCode('<style>body{margin:0}</style>', 'inline')
+//      ->addFile('js/main.js', 'main', ['layout'])
+//      ->get();

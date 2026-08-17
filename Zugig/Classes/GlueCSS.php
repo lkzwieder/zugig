@@ -1,29 +1,35 @@
 <?php
-class GlueCSS extends Glue {
-    protected static $instance = null;
 
-    public static function get_instance() {
-        if(!self::$instance) {
-            self::$instance = new self();
-        }
-        return self::$instance;
+class GlueCSS extends Glue
+{
+    public function tag(array $options = []): string
+    {
+        $minified = $this->minify();
+        $type = $options['type'] ?? 'text/css';
+        return "<style type=\"{$type}\">{$minified}</style>";
     }
 
-    public function print_tag() {?>
-        <style type="text/css"><?=$this->flush()?></style>
-    <?php }
-
-    public function print_url_tag() {
-        #TODO complete print_url_tag
+    public function tagLink(string $href, array $options = []): string
+    {
+        $rel = $options['rel'] ?? 'stylesheet';
+        $type = $options['type'] ?? 'text/css';
+        $media = $options['media'] ?? 'all';
+        $attrs = array_map(fn($k, $v) => htmlspecialchars($k) . '="' . htmlspecialchars($v) . '"', array_keys($options), $options);
+        $extra = empty($attrs) ? '' : ' ' . implode(' ', $attrs);
+        return "<link rel=\"{$rel}\" href=\"{$href}\" type=\"{$type}\" media=\"{$media}\"{$extra}>";
     }
 
-    protected function __construct() {}
-
-    protected function minify() {
-        return CSSMinifier::minify($this->get_packed_data());
-    }
-
-    protected function flush() {
-        return CSS_MINIFIER ? $this->minify() : $this->get_packed_data();
+    protected function minify(): string
+    {
+        return defined('CSS_MINIFIER') && CSS_MINIFIER
+            ? MinifierCSS::minify($this->flush())
+            : $this->flush();
     }
 }
+
+// Uso:
+// $css = new GlueCSS();
+// $css->addFile('css/base.css')
+//     ->addFile('css/layout.css')
+//     ->addFile('css/theme.css')
+//     ->tag(); // returns <style>...</style>
