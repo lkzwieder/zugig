@@ -1,83 +1,101 @@
 <?php
-class Database {
-    private static $instance = [];
 
-    public static function get_instance($db_name) {
-        if(!isset(self::$instance[$db_name])) {
-            $settings = parse_ini_file(DATABASES, true);
-            if($settings[$db_name]['driver'] == "dblib") {
-                $dns = $settings[$db_name]['driver'].":host=".$settings[$db_name]['host'].":".$settings[$db_name]['port'].
-                    ";dbname=".$settings[$db_name]['dbname'];
-            } else {
-                $dns = $settings[$db_name]['driver'] .
-                    ':host=' . $settings[$db_name]['host'] .
-                    ((!empty($settings[$db_name]['port'])) ? (';port=' . $settings[$db_name]['port']) : '') .
-                    ';dbname=' . $settings[$db_name]['dbname'];
-            }
+class Database
+{
+    private static array $instances = [];
 
-            try {
-                $pdo = new PDO($dns, $settings[$db_name]['username'], $settings[$db_name]['password']);
-                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                self::$instance[$db_name] = $pdo;
-            } catch(PDOException $e) {
-                echo 'Connection failed: '.$e->getMessage()."\n";
-            }
+    public static function connection(string $name): PDO
+    {
+        if (!isset(self::$instances[$name])) {
+            self::$instances[$name] = self::makeConnection($name);
         }
-        return self::$instance[$db_name];
+        return self::$instances[$name];
     }
 
-    public static function close($db_name) {
-        self::$instance[$db_name] = null;
+    public static function close(string $name): void
+    {
+        self::$instances[$name] = null;
     }
 
-    private function __construct() {
-
+    public static function clearAll(): void
+    {
+        self::$instances = [];
     }
 
-    public static function get_bulk_insert($table, Array $fields, Array $data, $replace = false, $quantity = 10000) {
-        $query = array();
-        $fields = static::array_to_values($fields);
-        $d = static::multiple_unshift($data, 0, count($data) <= $quantity ? count($data) : count($data) % $quantity);
-        $data = $d['origin'];
-        $query[] = static::insert_maker($table, $fields, $d['shifted'], $replace);
-        while($data) {
-            $d = static::multiple_unshift($data, 0, $quantity);
-            $data = $d['origin'];
-            $query[] = static::insert_maker($table, $fields, $d['shifted'], $replace);
+    private static function makeConnection(string $name): PDO
+    {
+        $settings = parse_ini_file(DATABASES, true);
+
+        if (!isset($settings[$name])) {
+            throw new RuntimeException("Database config '{$name}' not found in " . DATABASES);
         }
-        return $query;
+
+        $config = $settings[$name];
+
+        $dns = match ($config['driver'] ?? '') {
+            'dblib' => "dblib:host={$config['host']}:{$config['port']};dbname={$config['dbname']}",
+            'mysql' => "mysql:host={$config['host']};port={$config['port'] ?? 3306};dbname={$config['dbname']}",
+            'sqlite' => "sqlite:{$config['dbname']}",
+            default => throw new RuntimeException("Unsupported driver: {$config['driver']}"),
+        };
+
+        $pdo = new PDO($dns, $config['username'] ?? '', $config['password'] ?? '');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        return $pdo;
     }
 
-    public static function get_bulk_update($q, Array $data, $quantity = 3000) {
-        $query = array();
-        $d = static::multiple_unshift($data, 0, count($data) <= $quantity ? count($data) : count($data) % $quantity);
-        $data = $d['origin'];
-        $query[] = sprintf($q, static::array_to_values($d['shifted']));
-        while($data) {
-            $d = static::multiple_unshift($data, 0, $quantity);
-            $data = $d['origin'];
-            $query[] = sprintf($q, static::array_to_values($d['shifted']));
+    public static function bulkInsert(string $table, array $fields, array $data, bool $replace = false, int $batchSize = 1000): array
+    {
+        $columns = static::columns($fields);
+        $queries = [];
+        $total = count($data);
+
+        for ($i = 0; $i < $total; $i += $batchSize) {
+            $batch = array_slice($data, $i, $batchSize);
+            $values = array_map(fn($row) => static::values(array_map('json_encode', $row)), $batch);
+            $queries[] = sprintf(
+                '%s INTO %s %s VALUES %s',
+                $replace ? 'REPLACE' : 'INSERT',
+                $table,
+                $columns,
+                implode(', ', $values)
+            );
         }
-        return $query;
+
+        return $queries;
     }
 
-    public static function multiple_unshift(Array $array, $from, $quantity) {
-        $shifted = array_splice($array, $from, $quantity);
-        return array("origin" => $array, "shifted" => $shifted);
-    }
+    public static function bulkUpdate(string $query, array $data, int $batchSize = 3000): array
+    {
+        $queries = [];
+        $total = count($data);
 
-    private static function insert_maker($table, $fields, $data, $replace) {
-        $query = $replace ? "REPLACE" : "INSERT";
-        $query .= " INTO ".$table." ".$fields. " VALUES ";
-        $values = [];
-        foreach($data as $v) {
-            $values[] = static::array_to_values(array_map('json_encode', $v));
+        for ($i = 0; $i < $total; $i += $batchSize) {
+            $batch = array_slice($data, $i, $batchSize);
+            $queries[] = sprintf($query, static::values($batch));
         }
-        return $query. implode(", ", $values);
+
+        return $queries;
     }
 
-    public static function array_to_values($data) {
-        $srt = "(".implode(", ", $data).")";
-        return $srt;
+    private static function columns(array $fields): string
+    {
+        return '(' . implode(', ', array_map(fn($f) => "`{$f}`", $fields)) . ')';
+    }
+
+    private static function values(array $data): string
+    {
+        return '(' . implode(', ', $data) . ')';
     }
 }
+
+// Uso:
+// $pdo = Database::connection('default');
+// $stmt = $pdo->query('SELECT * FROM users')->fetchAll();
+//
+// $queries = Database::bulkInsert('users', ['name', 'email'], [
+//     ['John', 'john@example.com'],
+//     ['Jane', 'jane@example.com'],
+// ], false, 1000);
